@@ -1,0 +1,40 @@
+html {
+	background-color: lightgray;
+}
+h1 {
+	color: red;
+}
+h2 {
+	width: 100%;
+}
+
+.new_div {
+	color: blue;
+}
+
+.hidden {
+	display: none;
+}
+
+.message {
+	max-height: 30vh;
+	width: 50%;
+
+	background-color: red;
+}
+
+.dark {
+	background-color: #282828;
+	color: lightgray;
+}
+
+.link {
+	color: blue;
+	text-decoration: underline;
+}
+
+.timestamp {
+	font-size: 12px;
+	font-weight: lighter;
+	text-align: end;
+}

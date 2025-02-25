@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Client Side</title>
+	<link rel="stylesheet" href="style.css">
 </head>
 <body>
 	<div id="root"></div>
@@ -11,6 +12,7 @@
     <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
 
     <script type="text/babel">
 
@@ -22,38 +24,136 @@
 
             React.useEffect(() => {
                 // Fetch list of channels
-                fetch("vm146.rz.uni-osnabrueck.de/hub") // university hub
+                fetch("http://vm146.rz.uni-osnabrueck.de/hub/channels") // university hub
                     .then(response => response.json())
                     .then(data => setChannels(data.channels));
             }, []);  // empty list here means that this effect will run only once (you can add a variable to run it on change)
 
+			console.log(channels);
+
             return (
-                <div>
+				<div>
                     <h2>Channel List</h2>
                     <ul>
                         {channels.map(channel => (
                             <li key={channel.id}>
-                                {channel.name} (URL: {channel.endpoint}, Type: {channel.type_of_service})
+								<LinkButton channel={channel} channelClick={handleChannelOpen} />
                             </li>
                         ))}
                     </ul>
-                </div>
+				</div>
             );
         }
 
-		function 
+		function Images() {
+			return (
+				<div>
+					<img src="https://picsum.photos/300/200" />
+				</div>
+			)
+		}
 
-        // main code: render the ChannelList component, add more components here
+		function LinkButton({ channel, channelClick }) {
+			return (
+				<div onClick={() => {channelClick({channel});} } className="link">
+					{channel.name}
+				</div>
+			);
+		}
+
+		function handleChannelOpen({channel}) {
+
+			let new_root = document.querySelector('#new_root');
+
+			// Hide all channels
+			let root_children = new_root.childNodes;
+			console.log(root_children);
+			root_children.forEach((child) => {
+				child.className = "hidden"
+			})
+
+			// Show clicked channel
+			showChannel(channel={channel});
+		}
+
+		function showChannel({channel}) {
+			ReactDOM.render(
+				<div className="channel">
+					<p className="link" onClick={hideChannel}>Click here to go back to the hub.</p>
+					<Channel channel={channel} />
+				</div>,
+				document.querySelector('#root')
+			);
+			console.log(document.querySelector('#root'));
+		}
+
+		function hideChannel() {
+			let root = document.querySelector('#root');
+			let new_root = document.querySelector('#new_root');
+			let channel = root.querySelector('.channel');
+
+			root.removeChild(channel);
+			hubRender();
+		}
+
+		function Channel({ channel }) {
+
+            const [msgs, setMsgs] = React.useState([]);
+
+            React.useEffect(() => {
+				let fetchMessages = async () => {
+					try {
+						let response = await fetch("http://vm146.rz.uni-osnabrueck.de/u037/messages.json");
+						if (!response.ok) {
+							console.log("nö");
+							return;
+						}
+
+						const result = await response.json();
+						await console.log(result);
+						setMsgs(result);
+					} catch (err) {
+						console.log(err);
+					}
+				}
+
+				fetchMessages();
+            }, []);  // empty list here means that this effect will run only once (you can add a variable to run it on change)
+
+			return (
+				<div>
+					<h1>{channel.name}</h1>
+					<ul>
+						{msgs.map(msg => (
+							<Message msg={msg} />
+						))}
+					</ul>
+				</div>
+			)
+		}
+
+		function Message({msg}) {
+			return (
+				<div className="message">
+					<h2>{msg.sender} <span className="timestamp">{msg.timestamp}</span></h2>
+					<p>{msg.content}</p>
+				</div>
+			)
+		}
+
+		function hubRender() {
+
         ReactDOM.render(
-            <div>
-                <h1>Chat client: List of channels</h1>
+			<div id="new_root">
+				<h1>Chat client: List of channels</h1>
+				<Images />
                 <ChannelList />
             </div>,
             document.getElementById('root'));
-	</script>
+		}
+		hubRender();
 
-	<script>
-		console.log("Hello")
+        // main code: render the ChannelList component, add more components here
 	</script>
 
 </body>

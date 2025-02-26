@@ -79,8 +79,8 @@
 				<div className="channel">
 					<p className="link" onClick={hideChannel}>Click here to go back to the hub.</p>
 					<Channel channel={channel} />
-					<Post />
-					<DarkButton />
+					<Buttons />
+					<Post channel={channel}/>
 				</div>,
 				document.querySelector('#new_root')
 			);
@@ -92,7 +92,7 @@
 					<h1>Chat client: List of channels</h1>
 					<Images />
 					<ChannelList />
-					<DarkButton />
+					<Buttons />
 				</div>,
 				document.querySelector('#new_root')
 			); 
@@ -106,13 +106,11 @@
 			let matches = channel.endpoint.match(/\/[^/]+/g);
 			console.log(matches[0].match(/[^/]+/));
 			//console.log(channel.endpoint.match(/[^[channel.wsgi]]/));
-			let h = `http:/${matches[0]}${matches[1]}/messages.json`
-			console.log(h);
 
             React.useEffect(() => {
 				let fetchMessages = async () => {
 					try {
-						let response = await fetch(h);
+						let response = await fetch(`http:/${matches[0]}${matches[1]}/messages.json`);
 						if (!response.ok) {
 							alert("fetching messages returned error");
 							return;
@@ -167,23 +165,66 @@
 			)
 		}
 
-		function DarkButton() {
+
+		function Buttons() {
 			return (
-				<div className="dark_button" onClick={() => {
-					let html_div = document.querySelector('html');
-					if (html_div.classList.contains("dark")) {
-						html_div.classList.remove("dark");
-					}
-					else {
-						html_div.classList.add("dark");
-					}
-					
-				}}>
-					Dark Mode
+				<div id="buttons">
+					<div className="scroll top button" onClick={() => {
+						document.body.scrollTop = document.documentElement.scrollTop = 0;
+					}}>Scroll to top</div>
+
+					<div className="scroll end button" onClick={() => {
+						window.scrollTo(0, document.body.scrollHeight);
+					}}>Scroll to end</div>
+
+					<div className="dark_mode button" style={{'top': '5px'}} onClick={() => {
+						let html_div = document.querySelector('html');
+						if (html_div.classList.contains("dark_mode")) {
+							html_div.classList.remove("dark_mode");
+						}
+						else {
+							html_div.classList.add("dark_mode");
+						}
+						
+					}}>
+						Dark Mode
+					</div>
+				</div>
+			);
+		}
+
+		function Post({channel}) {
+			console.log(`endpoint ${channel.authkey}`);
+			let sendPost = async (event) => {
+				console.log(event.target.parentNode.querySelector('#sender').value);
+				console.log(event.target.parentNode.querySelector('#message').value);
+				let now = new Date;
+				try {
+					fetch(channel.endpoint, {
+						method: "POST",
+						headers: {
+							"Authorization": `authkey ${channel.authkey}`
+						},
+
+						body: JSON.stringify({
+							"sender": ``,
+							"content": "Hello",
+							"timestamp": `${now.toISOString()}`,
+						}),
+					});
+				}
+				catch (err) {
+					console.log(err);
+				}
+			}
+			return (
+				<div >
+					Sender: <input id="sender" /> <br />
+					Message: <input id="message" /> <br />
+					<div className="button" onClick={(event) => {sendPost(event);}}>Submit</div>
 				</div>
 			)
 		}
-
 
 		
 		ReactDOM.render(
@@ -191,7 +232,7 @@
 				<h1>Chat client: List of channels</h1>
 				<Images />
 				<ChannelList />
-				<DarkButton />
+				<Buttons />
 			</div>,
 			document.getElementById('root')); 
 		

@@ -47,19 +47,26 @@ h2 {
 	text-align: end;
 }
 
-.dark {
+.dark_mode {
 	background-color: #282828;
 	color: lightgray;
 }
 
-.dark_button {
+#buttons {
 	position: fixed;
 	top: 5px;
 	right: 5px;
 
+	display: flex;
+	flex-direction: row;
+	
+}
+
+.button {	
 	text-align: center;
 	line-height: 25px;
-
+	color: lightgray;
+	margin: 1px;
 	height: 25px;
 	width: 100px;
 	background-color: grey;

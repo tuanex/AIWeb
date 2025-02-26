@@ -15,6 +15,7 @@
 
 
     <script type="text/babel">
+		const url = "http://vm146.rz.uni-osnabrueck.de/";
 
         function ChannelList() {
             // React component that shows a channel list
@@ -28,8 +29,6 @@
                     .then(response => response.json())
                     .then(data => setChannels(data.channels));
             }, []);  // empty list here means that this effect will run only once (you can add a variable to run it on change)
-
-			console.log(channels);
 
             return (
 				<div>
@@ -65,9 +64,8 @@
 
 			let new_root = document.querySelector('#new_root');
 
-			// Hide all channels
+			// Hide hub
 			let root_children = new_root.childNodes;
-			console.log(root_children);
 			root_children.forEach((child) => {
 				child.className = "hidden"
 			})
@@ -81,39 +79,60 @@
 				<div className="channel">
 					<p className="link" onClick={hideChannel}>Click here to go back to the hub.</p>
 					<Channel channel={channel} />
+					<Post />
+					<DarkButton />
 				</div>,
-				document.querySelector('#root')
+				document.querySelector('#new_root')
 			);
-			console.log(document.querySelector('#root'));
 		}
 
 		function hideChannel() {
-			let root = document.querySelector('#root');
-			let new_root = document.querySelector('#new_root');
-			let channel = root.querySelector('.channel');
-
-			root.removeChild(channel);
-			hubRender();
+			ReactDOM.render(
+				<div id="new_root">
+					<h1>Chat client: List of channels</h1>
+					<Images />
+					<ChannelList />
+					<DarkButton />
+				</div>,
+				document.querySelector('#new_root')
+			); 
 		}
 
 		function Channel({ channel }) {
 
             const [msgs, setMsgs] = React.useState([]);
 
+			//console.log(channel.endpoint.match(/\/[^/]+\/channel.wsgi/g));
+			let matches = channel.endpoint.match(/\/[^/]+/g);
+			console.log(matches[0].match(/[^/]+/));
+			//console.log(channel.endpoint.match(/[^[channel.wsgi]]/));
+			let h = `http:/${matches[0]}${matches[1]}/messages.json`
+			console.log(h);
+
             React.useEffect(() => {
 				let fetchMessages = async () => {
 					try {
-						let response = await fetch("http://vm146.rz.uni-osnabrueck.de/u037/messages.json");
+						let response = await fetch(h);
 						if (!response.ok) {
-							console.log("nö");
+							alert("fetching messages returned error");
 							return;
 						}
 
 						const result = await response.json();
-						await console.log(result);
 						setMsgs(result);
 					} catch (err) {
-						console.log(err);
+						try {
+						let response = await fetch(`http:/${matches[0]}${matches[1]}/channel/messages.json`);
+						if (!response.ok) {
+							alert("fetching messages returned error");
+							return;
+						}
+
+						const result = await response.json();
+						setMsgs(result);
+						} catch (err) {
+							alert(err);
+						}
 					}
 				}
 
@@ -136,22 +155,46 @@
 			return (
 				<div className="message">
 					<h2>{msg.sender} <span className="timestamp">{msg.timestamp}</span></h2>
-					<p>{msg.content}</p>
+					<p className="content_hide" id={msg.timestamp} onClick={(event) => {
+						if (event.target.classList.contains("content_hide")) {
+							event.target.classList.remove("content_hide");
+						}
+						else {
+							event.target.classList.add("content_hide")
+						}
+					}} >{msg.content}</p>
 				</div>
 			)
 		}
 
-		function hubRender() {
+		function DarkButton() {
+			return (
+				<div className="dark_button" onClick={() => {
+					let html_div = document.querySelector('html');
+					if (html_div.classList.contains("dark")) {
+						html_div.classList.remove("dark");
+					}
+					else {
+						html_div.classList.add("dark");
+					}
+					
+				}}>
+					Dark Mode
+				</div>
+			)
+		}
 
-        ReactDOM.render(
+
+		
+		ReactDOM.render(
 			<div id="new_root">
 				<h1>Chat client: List of channels</h1>
 				<Images />
-                <ChannelList />
-            </div>,
-            document.getElementById('root'));
-		}
-		hubRender();
+				<ChannelList />
+				<DarkButton />
+			</div>,
+			document.getElementById('root')); 
+		
 
         // main code: render the ChannelList component, add more components here
 	</script>

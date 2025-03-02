@@ -5,6 +5,7 @@ from flask import Flask, request, render_template, jsonify
 import re
 import json
 import requests
+import deepl
 
 # Class-based application configuration
 class ConfigClass(object):
@@ -26,18 +27,18 @@ CHANNEL_ENDPOINT = "http://localhost:5001" # don't forget to adjust in the botto
 CHANNEL_FILE = 'messages.json'
 CHANNEL_TYPE_OF_SERVICE = 'aiweb24:chat'
 
-MAXIMUM_MESSAGES = 5
+MAXIMUM_MESSAGES = 50
 
-# Language learning specific constants
-SUPPORTED_LANGUAGES = ['english', 'spanish', 'french', 'german']
-LANGUAGE_PATTERNS = {
-    'hello': {'spanish': '¡Hola!', 'french': 'Bonjour!', 'german': 'Hallo!'},
-    'goodbye': {'spanish': '¡Adiós!', 'french': 'Au revoir!', 'german': 'Auf Wiedersehen!'},
-    'thanks': {'spanish': '¡Gracias!', 'french': 'Merci!', 'german': 'Danke!'},
-    'please': {'spanish': 'por favor', 'french': 'sʼil vous plaît', 'german': 'bitte'},
-    'yes': {'spanish': 'sí', 'french': 'oui', 'german': 'ja'},
-    'no': {'spanish': 'no', 'french': 'non', 'german': 'nein'}
+# Language to consider
+LANGUAGES = {
+    'english': 'EN',
+    'german': 'DE',
+    'spanish': 'ES',
+    'swedish': 'SV',
+    'french': 'FR'
 }
+# Authkey for DeepL API
+DEEPL_AUTHKEY = "91b66d38-aed4-4f18-987f-09b27203f3bc:fx"
 
 # Remove profanity_check import and replace with simple word list
 PROFANITY_WORDS = {
@@ -116,8 +117,8 @@ def send_message():
 
     message = check_against_forbidden(message)
 
+    # Return None if there was no request made, else append the returned string later
     response = check_for_request(message['content'])
-    print("rep", response)
 
     messages.append({'content': message['content'],
                      'sender': message['sender'],
@@ -126,6 +127,7 @@ def send_message():
                      })
     save_messages(messages)
 
+    # If there is a response, the is sent as well
     if response != None:
         print("rep", response)
         messages.append({'content': response,
@@ -142,13 +144,15 @@ def read_messages():
     try:
         f = open(CHANNEL_FILE, 'r')
     except FileNotFoundError:
-        return [{"content": "Hi, this a language learning channel! We hope you have fun! Just type: Translate German hello", "sender": "Welcome", "timestamp": "2025-02-17T16:37:03.057091", "extra": None}]
+        # Still prepend standard message, if there is no file
+        return [{"content": "Hi, this a language learning channel! We hope you have fun! Just type: Translate \"Hello\" to German. Supported languages are: German, English, and Spanish.", "sender": "Welcome", "timestamp": "2025-02-17T16:37:03.057091", "extra": None}]
     try:
         messages = json.load(f)
     except json.decoder.JSONDecodeError:
         messages = []
     f.close()
 
+    # Prepend standard message where necessary
     welcome_message = '[{"content": "Hi, this a language learning channel! We hope you have fun! Just type: Translate German hello", "sender": "Welcome", "timestamp": "2025-02-17T16:37:03.057091", "extra": null}]'
 
     if len(messages) == 0:
@@ -167,49 +171,59 @@ def save_messages(messages):
         json.dump(few_messages, f)
 
 def check_against_forbidden(message):
+    # Check against forbidden words
     for profane in PROFANITY_WORDS:
         if (message['content'].lower().find(profane) >= 0):
             message['content'] = "There has been a forbidden word, please remember to choose your language carefully ..."
             message['sender'] = "BotModerator"
     return message
 
+# Make the http request to get the translation 
+def get_translation(text, lang):
+    translator = deepl.Translator(DEEPL_AUTHKEY)
+
+    result = translator.translate_text(text, target_lang=lang)
+    return result
+
+# Parse the message and find the language and words to translate (to)
 def check_for_request(message):
-    lower_case = message.lower()
+    # Lower to make easier to analyse
+    message_lower = message.lower()
 
-    tokens = re.sub(r'[^\w\s]', '', lower_case).split(' ')
-    print(tokens)
+    # Check if request before further analysis
+    message_request = message_lower.replace("translate", "")
+    if message_lower == message_request:
+        print("no translate")
+        return
+    else:
+        print("Do translate")
 
-    new_content = ""
+    # Make analysis easier
+    message_no_punc = re.sub(r'[^a-zA-Z0-9" ]', '', message_request)
+    # Find string to translate
+    target_string = re.search(r'".+"', message_no_punc).group()
+    # Remove target string to make search for target lang easier
+    message_no_str = message_no_punc.replace(target_string, "")
 
-    try:
-        tokens.remove('translate')
+    # Make search for lang easier
+    tokens = message_no_str.split(' ')
 
-        for lang in SUPPORTED_LANGUAGES:
-            try:
+    target_language = None
 
-                tokens.remove(lang)
+    # Scan for only the 1st language code
+    for token in tokens:
+        if token in LANGUAGES:
+            if target_language == None:
+                target_language = token
+                break
 
-                # TODO Give message to tell someone to input a word as well
-                if len(tokens) == 0: 
-                    return
+    if target_language == None:
+        return "Please remember to add a language to translate to."
+    
+    response = get_translation(target_string[1:-1], LANGUAGES[target_language])
 
-                for token in tokens:
-                    if token in LANGUAGE_PATTERNS:
-                        translation = LANGUAGE_PATTERNS[token][lang]
-                        new_content = new_content + ("%s is %s in %s!   " % (token.title(), translation, lang.title()))
-                    else:
-                        new_content = new_content + ("Sorry, for this word, %s, we don't have a translation in %s.    \n" % (token, lang.title()))
-
-            except:
-                continue
-
-        if len(new_content) == 0:
-            return "Please remember to give a language to translate to ..."
-        else:
-            return new_content
-        
-    except:
-        return None
+    return "The requested phrase, " + target_string + ", is \"" + response.text + "\", in " + target_language.title() + "."
+    
 
 
 

@@ -9,6 +9,10 @@ h2 {
 	width: 100%;
 }
 
+.channelList {
+	position: relative;
+	left: 100px
+}
 
 
 
@@ -52,6 +56,23 @@ li.no_bullet {
 	margin-left: auto;
 }
 
+#randomImage {
+	position: absolute;
+	top: 10vh;
+	right: 20vw;
+
+	display: flex;
+	flex-direction: column;
+}
+
+#randomImage .image {
+	border: black solid 1px;
+}
+
+#randomImage button {
+	align-self: center;
+	color: black;
+}
 
 
 

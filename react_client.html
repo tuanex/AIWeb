@@ -31,7 +31,7 @@
 			return (
 				<div>
 					{renderChannels && 
-						<ChannelList setRenderC={setRenderChannels} setC={setChannel} />
+						<ChannelList setRenderC={setRenderChannels} setC={setChannel} renderChannels={renderChannels} />
 					}	
 					{!renderChannels &&
 						<Channel setRenderC={setRenderChannels} channel={channel} setC={setChannel} />
@@ -41,7 +41,7 @@
 			)
 		}
 
-		function ChannelList({ setRenderC, setC }) {
+		function ChannelList({ setRenderC, setC, renderChannels }) {
 			const [channels, setChannels] = React.useState([]);
 
 			React.useEffect(() => {
@@ -51,8 +51,9 @@
 			}, []);
 			
 			return (
-				<div>
+				<div className="channelList">
 					<h1>List of Available Channels</h1>
+					<RandomImage renderChannel={renderChannels}/>
 					<ul>
 						{channels.map(channel => (
 							<li key={channel.id}>
@@ -64,10 +65,31 @@
 			)
 		}
 
+		function RandomImage() {
+			const [image, setImage] = React.useState(getRandomImage());
+
+			function getRandomImage() {
+				return `https://picsum.photos/800/400?random=${Math.random()}`;
+			}
+
+			const refreshImage = () => {
+				setImage(getRandomImage());
+			};
+
+			return (
+				<div id="randomImage">
+					<img src={image} className="image" />
+					<button onClick={refreshImage} className="image button">New Image</button>
+				</div>
+			);
+		}
+
 		function LinkButton({ setRenderC, channel, setC }) {
 			return (
 				<div onClick={() => {
+					// Change which element in main div is shown
 					setRenderC(false);
+					// Update to new channel
 					setC(channel);
 					console.log("rendering");
 				}} className="link">
@@ -83,6 +105,7 @@
 			
 			const fetchMessages = React.useCallback(async (channel) => {
 				let matches = channel.endpoint.match(/\/[^/]+/g);
+				// Try multiple locations for message.json
 				try {
 					let response = await fetch(`http:/${matches[0]}${matches[1]}/messages.json`);
 					if (!response.ok) {
@@ -108,10 +131,13 @@
 				}
 			}, []);
 
+			// Refetch messages dependent on updates to channel and fetchMessages
 			React.useEffect(() => {
+				// Only if there is a message sent
 				if (Object.keys(channel).length > 0) {
 					fetchMessages(channel);
 					
+					// Refetch every second
 					const intervalId = setInterval(() => {
 						fetchMessages(channel);
 					}, 1000);
@@ -123,8 +149,11 @@
 			return (
 				<div>
 					<p>Go back to the <span className="link" onClick={() => {
+						// Actually render channel
 						setRenderC(true);
+						// Set which channel to render
 						setC([]);
+						// Update messages to force refetching of messages
 						setMsgs([]);
 					}}>hub</span>.</p>
 					<h1>{channel.name}</h1>
@@ -141,6 +170,7 @@
 				<div className="message">
 					<h2>{msg.sender} <span className="timestamp">{msg.timestamp}</span></h2>
 					<div className="content_hide" onClick={(event) => {
+						// Conceal too long messages, to keep message height more uniform
 						if (event.target.classList.contains("content_hide")) {
 							event.target.classList.remove("content_hide");
 						}
@@ -157,6 +187,8 @@
 		function Post({ channel, fetchMessages }) {
 
 			let handlePost = async (event) => {
+				// Force username and message content
+				// Only ask for user name once, else use previously entered
 				if (user === "") {
 					user = `${event.target.parentNode.querySelector('#sender').value}`;
 				}
@@ -170,6 +202,7 @@
 				}
 
 				try {
+					// Send post to channel
 					const response = await fetch(`${channel.endpoint}`, {
 						method: "POST",
 						headers: {
@@ -184,7 +217,8 @@
 					})
 
 					if (response.ok) {
-						event.target.parentNode.querySelector('#sender').value = "";
+						// Reset post form
+						event.target.parentNode.querySelector('#sender').value = ""; 
 						event.target.parentNode.querySelector('#message').value = "";
 						fetchMessages();
 					}

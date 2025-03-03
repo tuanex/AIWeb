@@ -15,157 +15,202 @@
 
 
     <script type="text/babel">
-		const url = "http://vm146.rz.uni-osnabrueck.de/";
 
-        function ChannelList() {
-            // React component that shows a channel list
-            // content is fetched from the university hub (works only on university network, use VPN)
-            //
-            const [channels, setChannels] = React.useState([]);
+		let user = "";
+		
+		function MainDiv() {
+			// Main states to control rendering of channels and selected messages
+			const [renderChannels, setRenderChannels] = React.useState(false);
+			const [channel, setChannel] = React.useState([]);
 
-            React.useEffect(() => {
-                // Fetch list of channels
-                fetch("http://vm146.rz.uni-osnabrueck.de/hub/channels") // university hub
-                    .then(response => response.json())
-                    .then(data => setChannels(data.channels));
-            }, []);  // empty list here means that this effect will run only once (you can add a variable to run it on change)
-
-            return (
-				<div>
-                    <h2>Channel List</h2>
-                    <ul>
-                        {channels.map(channel => (
-                            <li key={channel.id}>
-								<LinkButton channel={channel} channelClick={handleChannelOpen} />
-                            </li>
-                        ))}
-                    </ul>
-				</div>
-            );
-        }
-
-		function Images() {
+			React.useEffect(() => {
+				setRenderChannels(true);
+			}, []);
+			
+			// Render either channels or messages
 			return (
 				<div>
-					<img src="https://picsum.photos/300/200" />
+					{renderChannels && 
+						<ChannelList setRenderC={setRenderChannels} setC={setChannel} />
+					}	
+					{!renderChannels &&
+						<Channel setRenderC={setRenderChannels} channel={channel} setC={setChannel} />
+					}
+					<Buttons />
 				</div>
 			)
 		}
 
-		function LinkButton({ channel, channelClick }) {
-			return (
-				<div onClick={() => {channelClick({channel});} } className="link">
-					{channel.name}
-				</div>
-			);
-		}
+		function ChannelList({ setRenderC, setC }) {
+			const [channels, setChannels] = React.useState([]);
 
-		function handleChannelOpen({channel}) {
-
-			let new_root = document.querySelector('#new_root');
-
-			// Hide hub
-			let root_children = new_root.childNodes;
-			root_children.forEach((child) => {
-				child.className = "hidden"
-			})
-
-			// Show clicked channel
-			showChannel(channel={channel});
-		}
-
-		function showChannel({channel}) {
-			ReactDOM.render(
-				<div className="channel">
-					<p className="link" onClick={hideChannel}>Click here to go back to the hub.</p>
-					<Channel channel={channel} />
-					<Buttons />
-					<Post channel={channel}/>
-				</div>,
-				document.querySelector('#new_root')
-			);
-		}
-
-		function hideChannel() {
-			ReactDOM.render(
-				<div id="new_root">
-					<h1>Chat client: List of channels</h1>
-					<Images />
-					<ChannelList />
-					<Buttons />
-				</div>,
-				document.querySelector('#new_root')
-			); 
-		}
-
-		function Channel({ channel }) {
-
-            const [msgs, setMsgs] = React.useState([]);
-
-			//console.log(channel.endpoint.match(/\/[^/]+\/channel.wsgi/g));
-			let matches = channel.endpoint.match(/\/[^/]+/g);
-			console.log(matches[0].match(/[^/]+/));
-			//console.log(channel.endpoint.match(/[^[channel.wsgi]]/));
-
-            React.useEffect(() => {
-				let fetchMessages = async () => {
-					try {
-						let response = await fetch(`http:/${matches[0]}${matches[1]}/messages.json`);
-						if (!response.ok) {
-							alert("fetching messages returned error");
-							return;
-						}
-
-						const result = await response.json();
-						setMsgs(result);
-					} catch (err) {
-						try {
-						let response = await fetch(`http:/${matches[0]}${matches[1]}/channel/messages.json`);
-						if (!response.ok) {
-							alert("fetching messages returned error");
-							return;
-						}
-
-						const result = await response.json();
-						setMsgs(result);
-						} catch (err) {
-							alert(err);
-						}
-					}
-				}
-
-				fetchMessages();
-            }, []);  // empty list here means that this effect will run only once (you can add a variable to run it on change)
-
+			React.useEffect(() => {
+				fetch("http://vm146.rz.uni-osnabrueck.de/hub/channels") // university hub
+                    .then(response => response.json())
+                    .then(data => setChannels(data.channels));
+			}, []);
+			
 			return (
 				<div>
-					<h1>{channel.name}</h1>
+					<h1>List of Available Channels</h1>
 					<ul>
-						{msgs.map(msg => (
-							<Message msg={msg} />
+						{channels.map(channel => (
+							<li key={channel.id}>
+								<LinkButton setRenderC={setRenderC} channel={channel} setC={setC} />
+							</li>
 						))}
 					</ul>
 				</div>
 			)
 		}
 
-		function Message({msg}) {
+		function LinkButton({ setRenderC, channel, setC }) {
 			return (
-				<div className="message">
-					<h2>{msg.sender} <span className="timestamp">{msg.timestamp}</span></h2>
-					<p className="content_hide" id={msg.timestamp} onClick={(event) => {
-						if (event.target.classList.contains("content_hide")) {
-							event.target.classList.remove("content_hide");
-						}
-						else {
-							event.target.classList.add("content_hide")
-						}
-					}} >{msg.content}</p>
+				<div onClick={() => {
+					setRenderC(false);
+					setC(channel);
+					console.log("rendering");
+				}} className="link">
+					{channel.name}
 				</div>
 			)
 		}
 
+		
 
+		function Channel({ setRenderC, channel, setC }) {
+			const [msgs, setMsgs] = React.useState([]);
+			
+			const fetchMessages = React.useCallback(async (channel) => {
+				let matches = channel.endpoint.match(/\/[^/]+/g);
+				try {
+					let response = await fetch(`http:/${matches[0]}${matches[1]}/messages.json`);
+					if (!response.ok) {
+						alert("fetching messages returned error");
+						return;
+					}
+					const result = await response.json();
+					setMsgs(result);
+				}
+				catch (err) {
+					try {
+						let response = await fetch(`http:/${matches[0]}${matches[1]}/channel/messages.json`);
+						if (!response.ok) {
+							alert("fetching messages returned error");
+							return;
+						}
+						const result = await response.json();
+						setMsgs(result);
+					}
+					catch (err) {
+						alert(err);
+					}
+				}
+			}, []);
+
+			React.useEffect(() => {
+				if (Object.keys(channel).length > 0) {
+					fetchMessages(channel);
+					
+					const intervalId = setInterval(() => {
+						fetchMessages(channel);
+					}, 1000);
+
+					return () => clearInterval(intervalId);
+				}
+			}, [channel, fetchMessages]);
+			
+			return (
+				<div>
+					<p>Go back to the <span className="link" onClick={() => {
+						setRenderC(true);
+						setC([]);
+						setMsgs([]);
+					}}>hub</span>.</p>
+					<h1>{channel.name}</h1>
+					{msgs.map(msg => (
+						<Message key={msg.timestamp} msg={msg} />
+					))}
+					<Post channel={channel} fetchMessages={() => fetchMessages(channel)}/>
+				</div>
+			)
+		}
+
+		function Message({ msg }) {
+			return (
+				<div className="message">
+					<h2>{msg.sender} <span className="timestamp">{msg.timestamp}</span></h2>
+					<div className="content_hide" onClick={(event) => {
+						if (event.target.classList.contains("content_hide")) {
+							event.target.classList.remove("content_hide");
+						}
+						else {
+							event.target.classList.add("content_hide");
+						}
+					}}>
+						{msg.content}
+					</div>
+				</div>
+			)
+		}
+
+		function Post({ channel, fetchMessages }) {
+
+			let handlePost = async (event) => {
+				if (user === "") {
+					user = `${event.target.parentNode.querySelector('#sender').value}`;
+				}
+				if (user === "") {
+					alert("Please enter a sender")
+					return;
+				}
+				if (event.target.parentNode.querySelector('#message').value === "") {
+					alert("Please enter a message")
+					return;
+				}
+
+				try {
+					const response = await fetch(`${channel.endpoint}`, {
+						method: "POST",
+						headers: {
+							"Authorization": `authkey ${channel.authkey}`,
+							"Content-Type": "application/json"
+						},
+						body: JSON.stringify({
+							"sender": user,
+							"content": `${event.target.parentNode.querySelector('#message').value}`,
+							"timestamp": `${(new Date).toISOString()}`,
+						}),
+					})
+
+					if (response.ok) {
+						event.target.parentNode.querySelector('#sender').value = "";
+						event.target.parentNode.querySelector('#message').value = "";
+						fetchMessages();
+					}
+					else {
+						alert('There has been an error in sending the new post.');
+					}
+				}
+				catch (err) {
+					console.log("Error because of shit");
+					alert(err);
+				}
+			}
+
+			return (
+				<form onSubmit={(event) => {
+					event.preventDefault();
+					handlePost(event);
+				}}>
+					Sender: <input type="text" placeholder={user} id="sender" /> <br />
+					Message: <input type="text" id="message" /> <br />
+					<input type="submit" value="Post"></input>
+				</form>
+			)
+		}
+
+		// Render buttons in top right corner
 		function Buttons() {
 			return (
 				<div id="buttons">
@@ -193,48 +238,14 @@
 			);
 		}
 
-		function Post({channel}) {
-			console.log(`endpoint ${channel.authkey}`);
-			let sendPost = async (event) => {
-				console.log(event.target.parentNode.querySelector('#sender').value);
-				console.log(event.target.parentNode.querySelector('#message').value);
-				let now = new Date;
-				try {
-					fetch(channel.endpoint, {
-						method: "POST",
-						headers: {
-							"Authorization": `authkey ${channel.authkey}`
-						},
-
-						body: JSON.stringify({
-							"sender": ``,
-							"content": "Hello",
-							"timestamp": `${now.toISOString()}`,
-						}),
-					});
-				}
-				catch (err) {
-					console.log(err);
-				}
-			}
-			return (
-				<div >
-					Sender: <input id="sender" /> <br />
-					Message: <input id="message" /> <br />
-					<div className="button" onClick={(event) => {sendPost(event);}}>Submit</div>
-				</div>
-			)
-		}
-
-		
+		// Just render the the main component that can interactively change 
+		// from the channel list to the selected channel
 		ReactDOM.render(
-			<div id="new_root">
-				<h1>Chat client: List of channels</h1>
-				<Images />
-				<ChannelList />
-				<Buttons />
+			<div>
+				<MainDiv />
 			</div>,
-			document.getElementById('root')); 
+			document.getElementById('root')
+		);
 		
 
         // main code: render the ChannelList component, add more components here

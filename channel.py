@@ -23,7 +23,7 @@ HUB_URL = 'http://vm146.rz.uni-osnabrueck.de/hub'
 HUB_AUTHKEY = 'Crr-K24d-2N'
 CHANNEL_AUTHKEY = '0987654321'
 CHANNEL_NAME = "Language Learning Chat"
-CHANNEL_ENDPOINT = "http://vm146.rz.uni-osnabrueck.de/channel/channel.wsgi" # don't forget to adjust in the bottom of the file
+CHANNEL_ENDPOINT = "http://vm150.rz.uni-osnabrueck.de/channel/channel.wsgi" # don't forget to adjust in the bottom of the file
 CHANNEL_FILE = 'messages.json'
 CHANNEL_TYPE_OF_SERVICE = 'aiweb24:chat'
 
